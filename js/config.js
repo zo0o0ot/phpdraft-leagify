@@ -2,7 +2,7 @@
   angular.module("config", [])
 
 .constant("ENV", {
-	"apiEndpoint": "http://phpdraft-leagify.rhcloud.com/api/",
+	"apiEndpoint": "https://phpdraft-leagify.rhcloud.com/api/",
 	"recaptchaPublicKey": "6LcuYhcTAAAAAKcCHeu75NzrSRSpuV-4PBKevjzF"
 })
 

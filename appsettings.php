@@ -40,9 +40,9 @@ $configuration_variables = array(
   //See /api/Domain/Services/EmailService.php for further help if debugging your mail server settings.
 
   //Provide the base URL for the Angular app (no trailing slash):
-  'APP_BASE_URL' => 'http://phpdraft-leagify.rhcloud.com',
+  'APP_BASE_URL' => 'https://phpdraft-leagify.rhcloud.com',
   //Provide the base URL for the API (no trailing slash):
-  'API_BASE_URL' => 'http://phpdraft-leagify.rhcloud.com/api',
+  'API_BASE_URL' => 'https://phpdraft-leagify.rhcloud.com/api',
   //Provide the name of the header to store the authorization token in. (Default: "X-Access-Token")
   'AUTH_KEY_HEADER' => 'X-Access-Token',
   //Provide the name of the header to store the draft password in (Default: "X-PhpDraft-DraftPassword")
