@@ -18,6 +18,7 @@ class DraftDataRepository {
   private $nba_teams;
   private $nfl_teams;
   private $nhl_teams;
+  private $alma_mater_teams;
 
   private $mlb_positions;
   private $nba_positions;
@@ -25,6 +26,7 @@ class DraftDataRepository {
   private $nhl_positions;
   private $extended_nfl_positions;
   private $super_rugby_positions;
+  private $alma_mater_positions;
 
   public function __construct(Application $app) {
     $this->app = $app;
@@ -84,7 +86,17 @@ class DraftDataRepository {
         "OB" => $this->colors['dark_green'],
         "M" => $this->colors['light_green'],
         "L" => $this->colors['light_pink'],
-        "FH" => $this->colors['light_purple']
+        "FH" => $this->colors['light_purple'],
+        //Alma Mater League
+        "ACC" => $this->colors['light_blue'], //LT BLUE
+        "BIG12" => $this->colors['light_orange'], //LT ORANGE
+        "BIG10" => $this->colors['light_yellow'], //LT YELLOW
+        "PAC12" => $this->colors['light_red'], //LT RED
+        "SEC" => $this->colors['dark_green'], //DK GREEN
+        "FBS" => $this->colors['light_purple'], //LT PURPLE   *
+        "FCS" => $this->colors['light_green'],
+        "D2" => $this->colors['light_pink'],
+        "D3" => $this->colors['seafoam']
     );
 
     $this->sports = array(
@@ -93,7 +105,8 @@ class DraftDataRepository {
       "MLB" => "Baseball (MLB)",
       "NBA" => "Basketball (NBA)",
       "NHL" => "Hockey (NHL)",
-      "S15" => "Rugby (Super 15)"
+      "S15" => "Rugby (Super 15)",
+      "AMD" => "NFL Draft (Alma Mater Draft)"
     );
 
     $this->styles = array(
@@ -322,6 +335,35 @@ class DraftDataRepository {
         "SUN" => "Sunwolves",
         "WAR" => "Waratahs"
     );
+    
+    $this->alma_mater_positions = array(
+        "ACC" => "Atlantic Coast Conference",
+        "BIG12" => "Big 12",
+        "BIG10"  => "Big 10",
+        "PAC12" => "Pac 10",
+        "SEC" => "Southeastern Conference",
+        "FBS"  => "FBS - Not in Power 5",
+        "FCS" => "Football Championship Subdivision",
+        "D2" => "Division 2",
+        "D3" => "Division 3",
+    );
+
+    $this->alma_mater_teams = array(
+        "FBS - AAC" => "FBS - AAC",
+        "ACC" => "ACC",
+        "Big 12" => "Big 12",
+        "Big Ten" => "Big Ten",
+        "Pac 12" => "Pac 12",
+        "SEC" => "SEC",
+        "FBS - Mountain West" => "FBS - Mountain West",
+        "FBS - Independent" => "FBS - Independent",
+        "FBS - CUSA" => "FBS - CUSA",
+        "FBS - MAC" => "FBS - MAC",
+        "FBS - Sun Belt" => "FBS - Sun Belt",
+        "FCS" => "FCS",
+        "D2" => "Division 2",
+        "D3" => "Division 3"
+    );
   }
 
   public function GetPositionColors() {
@@ -361,6 +403,9 @@ class DraftDataRepository {
       case 's15':
         return $this->super_rugby_teams;
         break;
+      case 'amd':
+        return $this->alma_mater_teams;
+        break;
     }
   }
 
@@ -387,6 +432,9 @@ class DraftDataRepository {
         break;
       case 's15':
         return $this->super_rugby_positions;
+        break;
+      case 'amd':
+        return $this->alma_mater_positions;
         break;
     }
   }
