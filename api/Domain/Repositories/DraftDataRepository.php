@@ -362,7 +362,8 @@ class DraftDataRepository {
         "FBS - Sun Belt" => "FBS - Sun Belt",
         "FCS" => "FCS",
         "D2" => "Division 2",
-        "D3" => "Division 3"
+        "D3" => "Division 3",
+        "2016" => "2016"
     );
   }
 
