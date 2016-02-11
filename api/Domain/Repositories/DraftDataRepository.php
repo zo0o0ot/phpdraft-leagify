@@ -89,9 +89,9 @@ class DraftDataRepository {
         "FH" => $this->colors['light_purple'],
         //Alma Mater League
         "ACC" => $this->colors['light_blue'], //LT BLUE
-        "BIG12" => $this->colors['light_orange'], //LT ORANGE
-        "BIG10" => $this->colors['light_yellow'], //LT YELLOW
-        "PAC12" => $this->colors['light_red'], //LT RED
+        "B12" => $this->colors['light_orange'], //LT ORANGE
+        "B10" => $this->colors['light_yellow'], //LT YELLOW
+        "P12" => $this->colors['light_red'], //LT RED
         "SEC" => $this->colors['dark_green'], //DK GREEN
         "FBS" => $this->colors['light_purple'], //LT PURPLE   *
         "FCS" => $this->colors['light_green'],
