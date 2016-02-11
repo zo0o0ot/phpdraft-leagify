@@ -338,9 +338,9 @@ class DraftDataRepository {
     
     $this->alma_mater_positions = array(
         "ACC" => "Atlantic Coast Conference",
-        "BIG12" => "Big 12",
-        "BIG10"  => "Big 10",
-        "PAC12" => "Pac 10",
+        "B12" => "Big 12",
+        "B10"  => "Big 10",
+        "P12" => "Pac 12",
         "SEC" => "Southeastern Conference",
         "FBS"  => "FBS - Not in Power 5",
         "FCS" => "Football Championship Subdivision",
@@ -363,7 +363,8 @@ class DraftDataRepository {
         "FCS" => "FCS",
         "D2" => "Division 2",
         "D3" => "Division 3",
-        "2016" => "2016"
+        "2016" => "2016",
+        "CFB" => "College Football"
     );
   }
 
