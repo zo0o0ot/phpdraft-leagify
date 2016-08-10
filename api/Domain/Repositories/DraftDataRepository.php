@@ -96,7 +96,9 @@ class DraftDataRepository {
         "FBS" => $this->colors['light_purple'], //LT PURPLE   *
         "FCS" => $this->colors['light_green'],
         "D2" => $this->colors['light_pink'],
-        "D3" => $this->colors['seafoam']
+        "D3" => $this->colors['seafoam'],
+        //Olympics
+        "S16" => $this->colors['light_blue']
     );
 
     $this->sports = array(
@@ -106,7 +108,8 @@ class DraftDataRepository {
       "NBA" => "Basketball (NBA)",
       "NHL" => "Hockey (NHL)",
       "S15" => "Rugby (Super 15)",
-      "AMD" => "NFL Draft (Alma Mater Draft)"
+      "AMD" => "NFL Draft (Alma Mater Draft)",
+      "S16" => "2016 Summer Olympics"
     );
 
     $this->styles = array(
@@ -366,6 +369,14 @@ class DraftDataRepository {
         "2016" => "2016",
         "CFB" => "College Football"
     );
+
+    $this->s16_teams = array(
+        "WLD" => "World"
+    );
+
+    $this->s16_positions = array(
+        "S16" => "Summer Olympics"
+    );
   }
 
   public function GetPositionColors() {
@@ -408,6 +419,9 @@ class DraftDataRepository {
       case 'amd':
         return $this->alma_mater_teams;
         break;
+      case 's16':
+        return $this->s16_teams;
+        break;
     }
   }
 
@@ -437,6 +451,9 @@ class DraftDataRepository {
         break;
       case 'amd':
         return $this->alma_mater_positions;
+        break;
+      case 's16':
+        return $this->s16_positions;
         break;
     }
   }
