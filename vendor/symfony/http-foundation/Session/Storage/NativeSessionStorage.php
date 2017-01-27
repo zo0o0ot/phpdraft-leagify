@@ -13,7 +13,6 @@ namespace Symfony\Component\HttpFoundation\Session\Storage;
 
 use Symfony\Component\HttpFoundation\Session\SessionBagInterface;
 use Symfony\Component\HttpFoundation\Session\Storage\Handler\NativeSessionHandler;
-use Symfony\Component\HttpFoundation\Session\Storage\Proxy\NativeProxy;
 use Symfony\Component\HttpFoundation\Session\Storage\Proxy\AbstractProxy;
 use Symfony\Component\HttpFoundation\Session\Storage\Proxy\SessionHandlerProxy;
 
@@ -127,13 +126,8 @@ class NativeSessionStorage implements SessionStorageInterface
             return true;
         }
 
-        if (PHP_VERSION_ID >= 50400 && \PHP_SESSION_ACTIVE === session_status()) {
+        if (\PHP_SESSION_ACTIVE === session_status()) {
             throw new \RuntimeException('Failed to start the session: already started by PHP.');
-        }
-
-        if (PHP_VERSION_ID < 50400 && !$this->closed && isset($_SESSION) && session_id()) {
-            // not 100% fool-proof, but is the most reliable way to determine if a session is active in PHP 5.3
-            throw new \RuntimeException('Failed to start the session: already started by PHP ($_SESSION is set).');
         }
 
         if (ini_get('session.use_cookies') && headers_sent($file, $line)) {
@@ -146,10 +140,6 @@ class NativeSessionStorage implements SessionStorageInterface
         }
 
         $this->loadSession();
-        if (!$this->saveHandler->isWrapper() && !$this->saveHandler->isSessionHandlerInterface()) {
-            // This condition matches only PHP 5.3 with internal save handlers
-            $this->saveHandler->setActive(true);
-        }
 
         return true;
     }
@@ -192,12 +182,7 @@ class NativeSessionStorage implements SessionStorageInterface
     public function regenerate($destroy = false, $lifetime = null)
     {
         // Cannot regenerate the session ID for non-active sessions.
-        if (PHP_VERSION_ID >= 50400 && \PHP_SESSION_ACTIVE !== session_status()) {
-            return false;
-        }
-
-        // Check if session ID exists in PHP 5.3
-        if (PHP_VERSION_ID < 50400 && '' === session_id()) {
+        if (\PHP_SESSION_ACTIVE !== session_status()) {
             return false;
         }
 
@@ -225,11 +210,6 @@ class NativeSessionStorage implements SessionStorageInterface
     {
         session_write_close();
 
-        if (!$this->saveHandler->isWrapper() && !$this->saveHandler->isSessionHandlerInterface()) {
-            // This condition matches only PHP 5.3 with internal save handlers
-            $this->saveHandler->setActive(false);
-        }
-
         $this->closed = true;
         $this->started = false;
     }
@@ -256,6 +236,10 @@ class NativeSessionStorage implements SessionStorageInterface
      */
     public function registerBag(SessionBagInterface $bag)
     {
+        if ($this->started) {
+            throw new \LogicException('Cannot register a bag when the session is already started.');
+        }
+
         $this->bags[$bag->getName()] = $bag;
     }
 
@@ -347,7 +331,7 @@ class NativeSessionStorage implements SessionStorageInterface
      * session.save_handler and session.save_path e.g.
      *
      *     ini_set('session.save_handler', 'files');
-     *     ini_set('session.save_path', /tmp');
+     *     ini_set('session.save_path', '/tmp');
      *
      * or pass in a NativeSessionHandler instance which configures session.save_handler in the
      * constructor, for a template see NativeFileSessionHandler or use handlers in
@@ -375,24 +359,12 @@ class NativeSessionStorage implements SessionStorageInterface
         if (!$saveHandler instanceof AbstractProxy && $saveHandler instanceof \SessionHandlerInterface) {
             $saveHandler = new SessionHandlerProxy($saveHandler);
         } elseif (!$saveHandler instanceof AbstractProxy) {
-            $saveHandler = PHP_VERSION_ID >= 50400 ?
-                new SessionHandlerProxy(new \SessionHandler()) : new NativeProxy();
+            $saveHandler = new SessionHandlerProxy(new \SessionHandler());
         }
         $this->saveHandler = $saveHandler;
 
         if ($this->saveHandler instanceof \SessionHandlerInterface) {
-            if (PHP_VERSION_ID >= 50400) {
-                session_set_save_handler($this->saveHandler, false);
-            } else {
-                session_set_save_handler(
-                    array($this->saveHandler, 'open'),
-                    array($this->saveHandler, 'close'),
-                    array($this->saveHandler, 'read'),
-                    array($this->saveHandler, 'write'),
-                    array($this->saveHandler, 'destroy'),
-                    array($this->saveHandler, 'gc')
-                );
-            }
+            session_set_save_handler($this->saveHandler, false);
         }
     }
 

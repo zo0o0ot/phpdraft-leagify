@@ -16,6 +16,7 @@ use Silex\WebTestCase;
 use Silex\Provider\SecurityServiceProvider;
 use Silex\Provider\SessionServiceProvider;
 use Silex\Provider\ValidatorServiceProvider;
+use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 use Symfony\Component\HttpKernel\Client;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -178,6 +179,70 @@ class SecurityServiceProviderTest extends WebTestCase
         $this->assertCount(1, unserialize(serialize($app['routes'])));
     }
 
+    public function testUser()
+    {
+        $app = new Application();
+        $app->register(new SecurityServiceProvider(), array(
+            'security.firewalls' => array(
+                'default' => array(
+                    'http' => true,
+                    'users' => array(
+                        'fabien' => array('ROLE_ADMIN', '$2y$15$lzUNsTegNXvZW3qtfucV0erYBcEqWVeyOmjolB7R1uodsAVJ95vvu'),
+                    ),
+                ),
+            ),
+        ));
+        $app->get('/', function () { return 'foo'; });
+
+        $request = Request::create('/');
+        $app->handle($request);
+        $this->assertNull($app['user']);
+
+        $request->headers->set('PHP_AUTH_USER', 'fabien');
+        $request->headers->set('PHP_AUTH_PW', 'foo');
+        $app->handle($request);
+        $this->assertInstanceOf('Symfony\Component\Security\Core\User\UserInterface', $app['user']);
+        $this->assertEquals('fabien', $app['user']->getUsername());
+    }
+
+    public function testUserWithNoToken()
+    {
+        $app = new Application();
+        $app->register(new SecurityServiceProvider(), array(
+            'security.firewalls' => array(
+                'default' => array(
+                    'http' => true,
+                ),
+            ),
+        ));
+
+        $request = Request::create('/');
+
+        $app->get('/', function () { return 'foo'; });
+        $app->handle($request);
+        $this->assertNull($app['user']);
+    }
+
+    public function testUserWithInvalidUser()
+    {
+        $app = new Application();
+        $app->register(new SecurityServiceProvider(), array(
+            'security.firewalls' => array(
+                'default' => array(
+                    'http' => true,
+                ),
+            ),
+        ));
+
+        $request = Request::create('/');
+        $app->boot();
+        $app['security.token_storage']->setToken(new UsernamePasswordToken('foo', 'foo', 'foo'));
+
+        $app->get('/', function () { return 'foo'; });
+        $app->handle($request);
+        $this->assertNull($app['user']);
+    }
+
     public function createApplication($authenticationMethod = 'form')
     {
         $app = new Application();
@@ -206,8 +271,8 @@ class SecurityServiceProviderTest extends WebTestCase
                     'logout' => true,
                     'users' => array(
                         // password is foo
-                        'fabien' => array('ROLE_USER', '5FZ2Z8QIkA7UTZ4BYkoC+GsReLf569mSKDsfods6LYQ8t+a8EW9oaircfMpmaLbPBh4FOBiiFyLfuZmTSUwzZg=='),
-                        'admin'  => array('ROLE_ADMIN', '5FZ2Z8QIkA7UTZ4BYkoC+GsReLf569mSKDsfods6LYQ8t+a8EW9oaircfMpmaLbPBh4FOBiiFyLfuZmTSUwzZg=='),
+                        'fabien' => array('ROLE_USER', '$2y$15$lzUNsTegNXvZW3qtfucV0erYBcEqWVeyOmjolB7R1uodsAVJ95vvu'),
+                        'admin' => array('ROLE_ADMIN', '$2y$15$lzUNsTegNXvZW3qtfucV0erYBcEqWVeyOmjolB7R1uodsAVJ95vvu'),
                     ),
                 ),
             ),
@@ -257,8 +322,8 @@ class SecurityServiceProviderTest extends WebTestCase
                     'http' => true,
                     'users' => array(
                         // password is foo
-                        'dennis' => array('ROLE_USER', '5FZ2Z8QIkA7UTZ4BYkoC+GsReLf569mSKDsfods6LYQ8t+a8EW9oaircfMpmaLbPBh4FOBiiFyLfuZmTSUwzZg=='),
-                        'admin'  => array('ROLE_ADMIN', '5FZ2Z8QIkA7UTZ4BYkoC+GsReLf569mSKDsfods6LYQ8t+a8EW9oaircfMpmaLbPBh4FOBiiFyLfuZmTSUwzZg=='),
+                        'dennis' => array('ROLE_USER', '$2y$15$lzUNsTegNXvZW3qtfucV0erYBcEqWVeyOmjolB7R1uodsAVJ95vvu'),
+                        'admin' => array('ROLE_ADMIN', '$2y$15$lzUNsTegNXvZW3qtfucV0erYBcEqWVeyOmjolB7R1uodsAVJ95vvu'),
                     ),
                 ),
             ),

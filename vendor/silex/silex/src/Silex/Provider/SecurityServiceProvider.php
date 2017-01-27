@@ -21,12 +21,13 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RequestMatcher;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Security;
-use Symfony\Component\Security\Core\SecurityContext;
 use Symfony\Component\Security\Core\SecurityContextInterface;
 use Symfony\Component\Security\Core\User\UserChecker;
 use Symfony\Component\Security\Core\User\InMemoryUserProvider;
 use Symfony\Component\Security\Core\Encoder\EncoderFactory;
 use Symfony\Component\Security\Core\Encoder\MessageDigestPasswordEncoder;
+use Symfony\Component\Security\Core\Encoder\BCryptPasswordEncoder;
+use Symfony\Component\Security\Core\Encoder\Pbkdf2PasswordEncoder;
 use Symfony\Component\Security\Core\Authentication\Provider\DaoAuthenticationProvider;
 use Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider;
 use Symfony\Component\Security\Core\Authentication\AuthenticationProviderManager;
@@ -79,31 +80,27 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
         $app['security.role_hierarchy'] = array();
         $app['security.access_rules'] = array();
         $app['security.hide_user_not_found'] = true;
+        $app['security.encoder.bcrypt.cost'] = 13;
 
-        // the else part of this condition can be removed as soon as the Symfony 2.6 compat is removed
-        $r = new \ReflectionMethod('Symfony\Component\Security\Http\Firewall\ContextListener', '__construct');
-        $params = $r->getParameters();
-        if ('Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface' === $params[0]->getClass()->getName()) {
-            $app['security.authorization_checker'] = function ($app) {
-                return new AuthorizationChecker($app['security.token_storage'], $app['security.authentication_manager'], $app['security.access_manager']);
-            };
+        $app['security.authorization_checker'] = function ($app) {
+            return new AuthorizationChecker($app['security.token_storage'], $app['security.authentication_manager'], $app['security.access_manager']);
+        };
 
-            $app['security.token_storage'] = function ($app) {
-                return new TokenStorage();
-            };
+        $app['security.token_storage'] = function ($app) {
+            return new TokenStorage();
+        };
 
-            $app['security'] = function ($app) {
-                return new SecurityContext($app['security.token_storage'], $app['security.authorization_checker']);
-            };
-        } else {
-            $app['security.token_storage'] = $app['security.authorization_checker'] = function ($app) {
-                return $app['security'];
-            };
+        $app['user'] = $app->factory(function ($app) {
+            if (null === $token = $app['security.token_storage']->getToken()) {
+                return;
+            }
 
-            $app['security'] = function ($app) {
-                return new SecurityContext($app['security.authentication_manager'], $app['security.access_manager']);
-            };
-        }
+            if (!is_object($user = $token->getUser())) {
+                return;
+            }
+
+            return $user;
+        });
 
         $app['security.authentication_manager'] = function ($app) {
             $manager = new AuthenticationProviderManager($app['security.authentication_providers']);
@@ -115,12 +112,25 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
         // by default, all users use the digest encoder
         $app['security.encoder_factory'] = function ($app) {
             return new EncoderFactory(array(
-                'Symfony\Component\Security\Core\User\UserInterface' => $app['security.encoder.digest'],
+                'Symfony\Component\Security\Core\User\UserInterface' => $app['security.default_encoder'],
             ));
+        };
+
+        // by default, all users use the BCrypt encoder
+        $app['security.default_encoder'] = function ($app) {
+            return $app['security.encoder.bcrypt'];
         };
 
         $app['security.encoder.digest'] = function ($app) {
             return new MessageDigestPasswordEncoder();
+        };
+
+        $app['security.encoder.bcrypt'] = function ($app) {
+            return new BCryptPasswordEncoder($app['security.encoder.bcrypt.cost']);
+        };
+
+        $app['security.encoder.pbkdf2'] = function ($app) {
+            return new Pbkdf2PasswordEncoder();
         };
 
         $app['security.user_checker'] = function ($app) {
@@ -238,6 +248,8 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
                             throw new \LogicException(sprintf('The "%s" authentication entry is not registered.', $type));
                         }
 
+                        $options['stateless'] = $stateless;
+
                         list($providerId, $listenerId, $entryPointId, $position) = $app['security.authentication_listener.factory.'.$type]($name, $options);
 
                         if (null !== $entryPointId) {
@@ -322,8 +334,17 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
             foreach ($app['security.access_rules'] as $rule) {
                 if (is_string($rule[0])) {
                     $rule[0] = new RequestMatcher($rule[0]);
+                } elseif (is_array($rule[0])) {
+                    $rule[0] += [
+                        'path' => null,
+                        'host' => null,
+                        'methods' => null,
+                        'ips' => null,
+                        'attributes' => null,
+                        'schemes' => null,
+                    ];
+                    $rule[0] = new RequestMatcher($rule[0]['path'], $rule[0]['host'], $rule[0]['methods'], $rule[0]['ips'], $rule[0]['attributes'], $rule[0]['schemes']);
                 }
-
                 $map->add($rule[0], (array) $rule[1], isset($rule[2]) ? $rule[2] : null);
             }
 
@@ -339,7 +360,7 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
         };
 
         $app['security.http_utils'] = function ($app) {
-            return new HttpUtils(isset($app['url_generator']) ? $app['url_generator'] : null, $app['request_matcher']);
+            return new HttpUtils($app['url_generator'], $app['request_matcher']);
         };
 
         $app['security.last_error'] = $app->protect(function (Request $request) {
@@ -354,10 +375,10 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
 
             $session = $request->getSession();
             if ($session && $session->has($error)) {
-                $error = $session->get($error)->getMessage();
+                $message = $session->get($error)->getMessage();
                 $session->remove($error);
 
-                return $error;
+                return $message;
             }
         });
 
@@ -453,7 +474,7 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
                     $options,
                     $app['logger'],
                     $app['dispatcher'],
-                    isset($options['with_csrf']) && $options['with_csrf'] && isset($app['form.csrf_provider']) ? $app['form.csrf_provider'] : null
+                    isset($options['with_csrf']) && $options['with_csrf'] && isset($app['csrf.token_manager']) ? $app['csrf.token_manager'] : null
                 );
             };
         });
@@ -506,10 +527,13 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
                     $app['security.http_utils'],
                     $app['security.authentication.logout_handler.'.$name],
                     $options,
-                    isset($options['with_csrf']) && $options['with_csrf'] && isset($app['form.csrf_provider']) ? $app['form.csrf_provider'] : null
+                    isset($options['with_csrf']) && $options['with_csrf'] && isset($app['csrf.token_manager']) ? $app['csrf.token_manager'] : null
                 );
 
-                $listener->addHandler(new SessionLogoutHandler());
+                $invalidateSession = isset($options['invalidate_session']) ? $options['invalidate_session'] : true;
+                if (true === $invalidateSession && false === $options['stateless']) {
+                    $listener->addHandler(new SessionLogoutHandler());
+                }
 
                 return $listener;
             };
@@ -568,10 +592,6 @@ class SecurityServiceProvider implements ServiceProviderInterface, EventListener
             $app['security.validator.user_password_validator'] = function ($app) {
                 return new UserPasswordValidator($app['security.token_storage'], $app['security.encoder_factory']);
             };
-
-            if (!isset($app['validator.validator_service_ids'])) {
-                $app['validator.validator_service_ids'] = array();
-            }
 
             $app['validator.validator_service_ids'] = array_merge($app['validator.validator_service_ids'], array('security.validator.user_password' => 'security.validator.user_password_validator'));
         }

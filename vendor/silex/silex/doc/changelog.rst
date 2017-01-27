@@ -1,9 +1,15 @@
 Changelog
 =========
 
-2.0.0 (2014-XX-XX)
+2.0.0 (2015-XX-XX)
 ------------------
 
+* added support for the Symfony VarDumper Component
+* added a global Twig variable (an AppVariable instance)
+* [BC BREAK] CSRF has been moved to a standalone provider (``form.secret`` is not available anymore)
+* added support for the Symfony HttpFoundation Twig bridge extension
+* added support for the Symfony Asset Component
+* bumped minimum version of Symfony to 2.7
 * bumped minimum version of PHP to 5.5.0
 * Updated Pimple to 3.0
 * Updated session listeners to extends HttpKernel ones
@@ -18,14 +24,59 @@ Changelog
 * ``monolog.exception.logger_filter`` option added to Monolog service provider
 * [BC BREAK] ``$app['request']`` service removed, use ``$app['request_stack']`` instead
 
-1.3.0 (2015-XX-XX)
+1.3.6 (2016-XX-XX)
 ------------------
 
+* n/a
+
+1.3.5 (2016-01-06)
+------------------
+
+* fixed typo in SecurityServiceProvider
+
+1.3.4 (2015-09-15)
+------------------
+
+* fixed some new deprecations
+* fixed translation registration for the validators
+
+1.3.3 (2015-09-08)
+------------------
+
+* added support for Symfony 3.0 and Twig 2.0
+* fixed some Form deprecations
+* removed deprecated method call in the exception handler
+* fixed Swiftmailer spool flushing when spool is not enabled
+
+1.3.2 (2015-08-24)
+------------------
+
+* no changes
+
+1.3.1 (2015-08-04)
+------------------
+
+* added missing support for the Expression constraint
+* fixed the possibility to override translations for validator error messages
+* fixed sub-mounts with same name clash
+* fixed session logout handler when a firewall is stateless
+
+1.3.0 (2015-06-05)
+------------------
+
+* added a `$app['user']` to get the current user (security provider)
+* added view handlers
+* added support for the OPTIONS HTTP method
 * added caching for the Translator provider
 * deprecated `$app['exception_handler']->disable()` in favor of `unset($app['exception_handler'])`
-* made Silex compatible with Symfony 2.7 (and keep compatibility with Symfony 2.3, 2.5, and 2.6)
+* made Silex compatible with Symfony 2.7 an 2.8 (and keep compatibility with Symfony 2.3, 2.5, and 2.6)
 * removed deprecated TwigCoreExtension class (register the new HttpFragmentServiceProvider instead)
 * bumped minimum version of PHP to 5.3.9
+
+1.2.5 (2015-06-04)
+------------------
+
+* no code changes (last version of the 1.2 branch)
 
 1.2.4 (2015-04-11)
 ------------------

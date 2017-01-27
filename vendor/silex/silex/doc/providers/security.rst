@@ -10,16 +10,15 @@ Parameters
 * **security.hide_user_not_found** (optional): Defines whether to hide user not
   found exception or not. Defaults to ``true``.
 
+* **security.encoder.bcrypt.cost** (optional): Defines BCrypt password encoder cost. Defaults to 13.
+
 Services
 --------
 
-* **security**: The main entry point for the security provider. Use it to get
-  the current user token (only for Symfony up to 2.5).
-
-* **security.token_storage**: Gives access to the user token (Symfony 2.6+).
+* **security.token_storage**: Gives access to the user token.
 
 * **security.authorization_checker**: Allows to check authorizations for the
-  users (Symfony 2.6+).
+  users.
 
 * **security.authentication_manager**: An instance of
   `AuthenticationProviderManager
@@ -39,9 +38,17 @@ Services
   Request object.
 
 * **security.encoder_factory**: Defines the encoding strategies for user
-  passwords (default to use a digest algorithm for all users).
+  passwords (uses ``security.default_encoder``).
 
-* **security.encoder.digest**: The encoder to use by default for all users.
+* **security.default_encoder**: The encoder to use by default for all users (BCrypt).
+
+* **security.encoder.digest**: Digest password encoder.
+
+* **security.encoder.bcrypt**: BCrypt password encoder.
+
+* **security.encoder.pbkdf2**: Pbkdf2 password encoder.
+
+* **user**: Returns the current user
 
 .. note::
 
@@ -59,8 +66,7 @@ Registering
 
 .. note::
 
-    The Symfony Security Component comes with the "fat" Silex archive but not
-    with the regular one. If you are using Composer, add it as a dependency:
+    Add the Symfony Security Component as a dependency:
 
     .. code-block:: bash
 
@@ -77,7 +83,7 @@ Registering
     booted. So, if you want to use it outside of the handling of a request,
     don't forget to call ``boot()`` first::
 
-        $application->boot();
+        $app->boot();
 
 Usage
 -----
@@ -100,11 +106,7 @@ Accessing the current User
 The current user information is stored in a token that is accessible via the
 ``security`` service::
 
-    // Symfony 2.6+
     $token = $app['security.token_storage']->getToken();
-
-    // Symfony 2.3/2.5
-    $token = $app['security']->getToken();
 
 If there is no information about the user, the token is ``null``. If the user
 is known, you can get it with a call to ``getUser()``::
@@ -134,10 +136,24 @@ under ``/admin/``::
         ),
     );
 
-The ``pattern`` is a regular expression (it can also be a `RequestMatcher
+The ``pattern`` is a regular expression on the URL path; the ``http`` setting
+tells the security layer to use HTTP basic authentication and the ``users``
+entry defines valid users.
+
+If you want to restrict the firewall by more than the URL pattern (like the
+HTTP method, the client IP, the hostname, or any Request attributes), use an
+instance of a `RequestMatcher
 <http://api.symfony.com/master/Symfony/Component/HttpFoundation/RequestMatcher.html>`_
-instance); the ``http`` setting tells the security layer to use HTTP basic
-authentication and the ``users`` entry defines valid users.
+for the ``pattern`` option::
+
+    use Symfony/Component/HttpFoundation/RequestMatcher;
+
+    $app['security.firewalls'] = array(
+        'admin' => array(
+            'pattern' => new RequestMatcher('^/admin', 'example.com', 'POST'),
+            // ...
+        ),
+    );
 
 Each user is defined with the following information:
 
@@ -298,7 +314,7 @@ pattern::
         'secured' => array(
             'pattern' => '^/admin/',
             'form' => array('login_path' => '/login', 'check_path' => '/admin/login_check'),
-            'logout' => array('logout_path' => '/admin/logout'),
+            'logout' => array('logout_path' => '/admin/logout', 'invalidate_session' => true),
 
             // ...
         ),
@@ -336,13 +352,7 @@ Checking User Roles
 To check if a user is granted some role, use the ``isGranted()`` method on the
 security context::
 
-    // Symfony 2.6+
     if ($app['security.authorization_checker']->isGranted('ROLE_ADMIN')) {
-        // ...
-    }
-
-    // Symfony 2.3/2.5
-    if ($app['security']->isGranted('ROLE_ADMIN')) {
         // ...
     }
 
@@ -550,19 +560,35 @@ sample users::
 Defining a custom Encoder
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-By default, Silex uses the ``sha512`` algorithm to encode passwords.
-Additionally, the password is encoded multiple times and converted to base64.
-You can change these defaults by overriding the ``security.encoder.digest``
-service::
+By default, Silex uses the ``BCrypt`` algorithm to encode passwords.
+Additionally, the password is encoded multiple times.
+You can change these defaults by overriding ``security.default_encoder``
+service to return one of the predefined encoders:
 
-    use Symfony\Component\Security\Core\Encoder\MessageDigestPasswordEncoder;
+* **security.encoder.digest**: Digest password encoder.
 
-    $app['security.encoder.digest'] = function ($app) {
-        // use the sha1 algorithm
-        // don't base64 encode the password
-        // use only 1 iteration
-        return new MessageDigestPasswordEncoder('sha1', false, 1);
+* **security.encoder.bcrypt**: BCrypt password encoder.
+
+* **security.encoder.pbkdf2**: Pbkdf2 password encoder.
+
+.. code-block:: php
+
+    $app['security.default_encoder'] = function ($app) {
+        return $app['security.encoder.pbkdf2'];
     };
+
+Or you can define you own, fully customizable encoder::
+
+    use Symfony\Component\Security\Core\Encoder\PlaintextPasswordEncoder;
+
+    $app['security.default_encoder'] = function ($app) {
+        // Plain text (e.g. for debugging)
+        return new PlaintextPasswordEncoder();
+    };
+
+.. tip::
+
+    You can change the default BCrypt encoding cost by overriding ``security.encoder.bcrypt.cost``
 
 Defining a custom Authentication Provider
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -581,7 +607,6 @@ use in your configuration::
 
         // define the authentication listener object
         $app['security.authentication_listener.'.$name.'.wsse'] = function () use ($app) {
-            // use 'security' instead of 'security.token_storage' on Symfony <2.6
             return new WsseListener($app['security.token_storage'], $app['security.authentication_manager']);
         };
 
@@ -639,8 +664,6 @@ Traits
 
 ``Silex\Application\SecurityTrait`` adds the following shortcuts:
 
-* **user**: Returns the current user.
-
 * **encodePassword**: Encode a given password.
 
 .. code-block:: php
@@ -658,5 +681,24 @@ Traits
     $app->get('/', function () {
         // do something but only for admins
     })->secure('ROLE_ADMIN');
+
+.. caution::
+
+    The ``Silex\Route\SecurityTrait`` must be used with a user defined
+    ``Route`` class, not the application.
+
+    .. code-block:: php
+
+        use Silex\Route;
+
+        class MyRoute extends Route
+        {
+            use Route\SecurityTrait;
+        }
+
+    .. code-block:: php
+
+        $app['route_class'] = 'MyRoute';
+
 
 .. _cookbook: http://symfony.com/doc/current/cookbook/security/custom_authentication_provider.html

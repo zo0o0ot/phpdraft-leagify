@@ -42,10 +42,12 @@ class ControllerCollection
     protected $defaultRoute;
     protected $defaultController;
     protected $prefix;
+    protected $routesFactory;
 
-    public function __construct(Route $defaultRoute)
+    public function __construct(Route $defaultRoute, $routesFactory = null)
     {
         $this->defaultRoute = $defaultRoute;
+        $this->routesFactory = $routesFactory;
         $this->defaultController = function (Request $request) {
             throw new \LogicException(sprintf('The "%s" route must have code to run when it matches.', $request->attributes->get('_route')));
         };
@@ -137,6 +139,19 @@ class ControllerCollection
     }
 
     /**
+     * Maps an OPTIONS request to a callable.
+     *
+     * @param string $pattern Matched route pattern
+     * @param mixed  $to      Callback that returns the response when matched
+     *
+     * @return Controller
+     */
+    public function options($pattern, $to = null)
+    {
+        return $this->match($pattern, $to)->method('OPTIONS');
+    }
+
+    /**
      * Maps a PATCH request to a callable.
      *
      * @param string $pattern Matched route pattern
@@ -158,9 +173,7 @@ class ControllerCollection
         call_user_func_array(array($this->defaultRoute, $method), $arguments);
 
         foreach ($this->controllers as $controller) {
-            if ($controller instanceof Controller) {
-                call_user_func_array(array($controller, $method), $arguments);
-            }
+            call_user_func_array(array($controller, $method), $arguments);
         }
 
         return $this;
@@ -169,31 +182,42 @@ class ControllerCollection
     /**
      * Persists and freezes staged controllers.
      *
-     * @param string $prefix
-     *
      * @return RouteCollection A RouteCollection instance
      */
-    public function flush($prefix = '')
+    public function flush()
     {
-        $routes = new RouteCollection();
+        if (null === $this->routesFactory) {
+            $routes = new RouteCollection();
+        } else {
+            $routes = $this->routesFactory;
+        }
+
+        return $this->doFlush('', $routes);
+    }
+
+    private function doFlush($prefix, RouteCollection $routes)
+    {
+        if ($prefix !== '') {
+            $prefix = '/'.trim(trim($prefix), '/');
+        }
 
         foreach ($this->controllers as $controller) {
             if ($controller instanceof Controller) {
+                $controller->getRoute()->setPath($prefix.$controller->getRoute()->getPath());
                 if (!$name = $controller->getRouteName()) {
-                    $name = $controller->generateRouteName($prefix);
+                    $name = $base = $controller->generateRouteName('');
+                    $i = 0;
                     while ($routes->get($name)) {
-                        $name .= '_';
+                        $name = $base.'_'.++$i;
                     }
                     $controller->bind($name);
                 }
                 $routes->add($name, $controller->getRoute());
                 $controller->freeze();
             } else {
-                $routes->addCollection($controller->flush($controller->prefix));
+                $controller->doFlush($prefix.$controller->prefix, $routes);
             }
         }
-
-        $routes->addPrefix($prefix);
 
         $this->controllers = array();
 

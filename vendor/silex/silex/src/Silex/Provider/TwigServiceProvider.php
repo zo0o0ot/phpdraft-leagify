@@ -13,10 +13,14 @@ namespace Silex\Provider;
 
 use Pimple\Container;
 use Pimple\ServiceProviderInterface;
+use Symfony\Bridge\Twig\AppVariable;
+use Symfony\Bridge\Twig\Extension\AssetExtension;
+use Symfony\Bridge\Twig\Extension\DumpExtension;
 use Symfony\Bridge\Twig\Extension\RoutingExtension;
 use Symfony\Bridge\Twig\Extension\TranslationExtension;
 use Symfony\Bridge\Twig\Extension\FormExtension;
 use Symfony\Bridge\Twig\Extension\SecurityExtension;
+use Symfony\Bridge\Twig\Extension\HttpFoundationExtension;
 use Symfony\Bridge\Twig\Extension\HttpKernelExtension;
 use Symfony\Bridge\Twig\Form\TwigRendererEngine;
 use Symfony\Bridge\Twig\Form\TwigRenderer;
@@ -35,24 +39,42 @@ class TwigServiceProvider implements ServiceProviderInterface
         $app['twig.path'] = array();
         $app['twig.templates'] = array();
 
+        $app['twig.app_variable'] = function ($app) {
+            $var = new AppVariable();
+            if (isset($app['security.token_storage'])) {
+                $var->setTokenStorage($app['security.token_storage']);
+            }
+            if (isset($app['request_stack'])) {
+                $var->setRequestStack($app['request_stack']);
+            }
+            $var->setDebug($app['debug']);
+
+            return $var;
+        };
+
         $app['twig'] = function ($app) {
             $app['twig.options'] = array_replace(
                 array(
-                    'charset'          => isset($app['charset']) ? $app['charset'] : 'UTF-8',
-                    'debug'            => isset($app['debug']) ? $app['debug'] : false,
-                    'strict_variables' => isset($app['debug']) ? $app['debug'] : false,
+                    'charset' => $app['charset'],
+                    'debug' => $app['debug'],
+                    'strict_variables' => $app['debug'],
                 ), $app['twig.options']
             );
 
             $twig = $app['twig.environment_factory']($app);
+            // registered for BC, but should not be used anymore
+            // deprecated and should probably be removed in Silex 3.0
             $twig->addGlobal('app', $app);
 
-            if (isset($app['debug']) && $app['debug']) {
+            if ($app['debug']) {
                 $twig->addExtension(new \Twig_Extension_Debug());
             }
 
             if (class_exists('Symfony\Bridge\Twig\Extension\RoutingExtension')) {
-                if (isset($app['url_generator'])) {
+                $twig->addGlobal('global', $app['twig.app_variable']);
+
+                if (isset($app['request_stack'])) {
+                    $twig->addExtension(new HttpFoundationExtension($app['request_stack']));
                     $twig->addExtension(new RoutingExtension($app['url_generator']));
                 }
 
@@ -70,13 +92,17 @@ class TwigServiceProvider implements ServiceProviderInterface
                     $twig->addExtension(new HttpKernelExtension($app['fragment.handler']));
                 }
 
+                if (isset($app['assets.packages'])) {
+                    $twig->addExtension(new AssetExtension($app['assets.packages']));
+                }
+
                 if (isset($app['form.factory'])) {
                     $app['twig.form.engine'] = function ($app) {
                         return new TwigRendererEngine($app['twig.form.templates']);
                     };
 
                     $app['twig.form.renderer'] = function ($app) {
-                        return new TwigRenderer($app['twig.form.engine'], $app['form.csrf_provider']);
+                        return new TwigRenderer($app['twig.form.engine'], $app['csrf.token_manager']);
                     };
 
                     $twig->addExtension(new FormExtension($app['twig.form.renderer']));
@@ -85,6 +111,10 @@ class TwigServiceProvider implements ServiceProviderInterface
                     $reflected = new \ReflectionClass('Symfony\Bridge\Twig\Extension\FormExtension');
                     $path = dirname($reflected->getFileName()).'/../Resources/views/Form';
                     $app['twig.loader']->addLoader(new \Twig_Loader_Filesystem($path));
+                }
+
+                if (isset($app['var_dumper.cloner'])) {
+                    $twig->addExtension(new DumpExtension($app['var_dumper.cloner']));
                 }
             }
 

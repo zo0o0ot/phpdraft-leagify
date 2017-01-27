@@ -11,7 +11,7 @@
 
 namespace Symfony\Component\HttpKernel\Bundle;
 
-use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\DependencyInjection\ContainerAwareTrait;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\Console\Application;
@@ -26,10 +26,8 @@ use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
  */
 abstract class Bundle implements BundleInterface
 {
-    /**
-     * @var ContainerInterface
-     */
-    protected $container;
+    use ContainerAwareTrait;
+
     protected $name;
     protected $extension;
     protected $path;
@@ -60,16 +58,6 @@ abstract class Bundle implements BundleInterface
      */
     public function build(ContainerBuilder $container)
     {
-    }
-
-    /**
-     * Sets the container.
-     *
-     * @param ContainerInterface|null $container A ContainerInterface instance or null
-     */
-    public function setContainer(ContainerInterface $container = null)
-    {
-        $this->container = $container;
     }
 
     /**
@@ -180,6 +168,10 @@ abstract class Bundle implements BundleInterface
             return;
         }
 
+        if (!class_exists('Symfony\Component\Finder\Finder')) {
+            throw new \RuntimeException('You need the symfony/finder component to register bundle commands.');
+        }
+
         $finder = new Finder();
         $finder->files()->name('*Command.php')->in($dir);
 
@@ -187,7 +179,7 @@ abstract class Bundle implements BundleInterface
         foreach ($finder as $file) {
             $ns = $prefix;
             if ($relativePath = $file->getRelativePath()) {
-                $ns .= '\\'.strtr($relativePath, '/', '\\');
+                $ns .= '\\'.str_replace('/', '\\', $relativePath);
             }
             $class = $ns.'\\'.$file->getBasename('.php');
             if ($this->container) {

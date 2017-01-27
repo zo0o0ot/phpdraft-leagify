@@ -5,29 +5,36 @@ namespace Silex\Component\Security\Http\Token;
 
 use Symfony\Component\Security\Core\Authentication\Token\AbstractToken;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Security\Core\Role\RoleInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 class JWTToken extends AbstractToken implements TokenInterface
 {
+    /**
+     * @var string token context from JWT tokens
+     */
     protected $tokenContext;
 
     /**
-     * Set token context from JWT tokens
-     *
-     * @param $tokenContext
+     * @var string username claim for JWT token
      */
-    public function setTokenContext($tokenContext)
-    {
-        $this->tokenContext = $tokenContext;
-    }
+    protected $usernameClaim;
 
     /**
-     * Return token context
+     * Constructor.
      *
-     * @return mixed
+     * @param string|object            $user        The user
+     * @param mixed                    $context The user credentials
+     * @param string                   $providerKey The provider key
+     * @param RoleInterface[]|string[] $roles       An array of roles
      */
-    public function getTokenContext()
-    {
-        return $this->tokenContext;
+    public function __construct($user, $context, $providerKey, array $roles = array()) {
+        parent::__construct($roles);
+        $this->setUser($user);
+        $this->credentials = $context;
+        $this->providerKey = $providerKey;
+
+        parent::setAuthenticated(count($roles) > 0);
     }
 
     /**
@@ -37,6 +44,6 @@ class JWTToken extends AbstractToken implements TokenInterface
      */
     public function getCredentials()
     {
-        return '';
+        return $this->credentials;
     }
 }

@@ -16,12 +16,14 @@ class SecurityJWTServiceProvider implements ServiceProviderInterface
 
     public function register(Container $app)
     {
-        $app['security.jwt'] = array_merge([
+        $app['security.jwt'] = array_replace_recursive([
             'secret_key' => 'default_secret_key',
             'life_time' => 86400,
             'algorithm'  => ['HS256'],
             'options' => [
-                'header_name' => 'SECURITY_TOKEN_HEADER'
+                'username_claim' => 'name',
+                'header_name' => 'SECURITY_TOKEN_HEADER',
+                'token_prefix' => null,
             ]
         ], $app['security.jwt']);
 
@@ -45,10 +47,11 @@ class SecurityJWTServiceProvider implements ServiceProviderInterface
          * Class for usage custom listeners
          */
         $app['security.jwt.authentication_listener'] = function() use ($app) {
-            return new JWTListener($app['security'],
+            return new JWTListener($app['security.token_storage'],
                 $app['security.authentication_manager'],
                 $app['security.jwt.encoder'],
-                $app['security.jwt']['options']
+                $app['security.jwt']['options'],
+                'jwt'
             );
         };
 
@@ -56,7 +59,7 @@ class SecurityJWTServiceProvider implements ServiceProviderInterface
          * Class for usage custom user provider
          */
         $app['security.jwt.authentication_provider'] = function() use ($app) {
-            return new JWTProvider($app['users']);
+            return new JWTProvider($app['users'], $app['security.user_checker'], "jwt");
         };
 
         $app['security.entry_point.jwt'] = function() use ($app) {

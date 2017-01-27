@@ -23,6 +23,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\EventDispatcher\Event;
+use Symfony\Component\Routing\RouteCollection;
 
 /**
  * Application test cases.
@@ -506,7 +507,7 @@ class ApplicationTest extends \PHPUnit_Framework_TestCase
     {
         $app = new Application();
 
-        ErrorHandler::register();
+        ErrorHandler::register(null, false);
         $app['monolog.logfile'] = 'php://memory';
         $app->register(new MonologServiceProvider());
         $app->get('/foo/', function () { return 'ok'; });
@@ -518,13 +519,134 @@ class ApplicationTest extends \PHPUnit_Framework_TestCase
     public function testBeforeFilterOnMountedControllerGroupIsolatedToGroup()
     {
         $app = new Application();
-        $app->match('/', function() { return new Response('ok'); });
+        $app->match('/', function () { return new Response('ok'); });
         $mounted = $app['controllers_factory'];
-        $mounted->before(function() { return new Response('not ok'); });
+        $mounted->before(function () { return new Response('not ok'); });
         $app->mount('/group', $mounted);
 
         $response = $app->handle(Request::create('/'));
         $this->assertEquals('ok', $response->getContent());
+    }
+
+    public function testViewListenerWithPrimitive()
+    {
+        $app = new Application();
+        $app->get('/foo', function () { return 123; });
+        $app->view(function ($view, Request $request) {
+            return new Response($view);
+        });
+
+        $response = $app->handle(Request::create('/foo'));
+
+        $this->assertEquals('123', $response->getContent());
+    }
+
+    public function testViewListenerWithArrayTypeHint()
+    {
+        $app = new Application();
+        $app->get('/foo', function () { return array('ok'); });
+        $app->view(function (array $view) {
+            return new Response($view[0]);
+        });
+
+        $response = $app->handle(Request::create('/foo'));
+
+        $this->assertEquals('ok', $response->getContent());
+    }
+
+    public function testViewListenerWithObjectTypeHint()
+    {
+        $app = new Application();
+        $app->get('/foo', function () { return (object) array('name' => 'world'); });
+        $app->view(function (\stdClass $view) {
+            return new Response('Hello '.$view->name);
+        });
+
+        $response = $app->handle(Request::create('/foo'));
+
+        $this->assertEquals('Hello world', $response->getContent());
+    }
+
+    public function testViewListenerWithCallableTypeHint()
+    {
+        $app = new Application();
+        $app->get('/foo', function () { return function () { return 'world'; }; });
+        $app->view(function (callable $view) {
+            return new Response('Hello '.$view());
+        });
+
+        $response = $app->handle(Request::create('/foo'));
+
+        $this->assertEquals('Hello world', $response->getContent());
+    }
+
+    public function testViewListenersCanBeChained()
+    {
+        $app = new Application();
+        $app->get('/foo', function () { return (object) array('name' => 'world'); });
+
+        $app->view(function (\stdClass $view) {
+            return array('msg' => 'Hello '.$view->name);
+        });
+
+        $app->view(function (array $view) {
+            return $view['msg'];
+        });
+
+        $response = $app->handle(Request::create('/foo'));
+
+        $this->assertEquals('Hello world', $response->getContent());
+    }
+
+    public function testViewListenersAreIgnoredIfNotSuitable()
+    {
+        $app = new Application();
+        $app->get('/foo', function () { return 'Hello world'; });
+
+        $app->view(function (\stdClass $view) {
+            throw new \Exception('View listener was called');
+        });
+
+        $app->view(function (array $view) {
+            throw new \Exception('View listener was called');
+        });
+
+        $response = $app->handle(Request::create('/foo'));
+
+        $this->assertEquals('Hello world', $response->getContent());
+    }
+
+    public function testViewListenersResponsesAreNotUsedIfNull()
+    {
+        $app = new Application();
+        $app->get('/foo', function () { return 'Hello world'; });
+
+        $app->view(function ($view) {
+            return 'Hello view listener';
+        });
+
+        $app->view(function ($view) {
+            return;
+        });
+
+        $response = $app->handle(Request::create('/foo'));
+
+        $this->assertEquals('Hello view listener', $response->getContent());
+    }
+
+    public function testDefaultRoutesFactory()
+    {
+        $app = new Application();
+        $this->assertInstanceOf('Symfony\Component\Routing\RouteCollection', $app['routes']);
+    }
+
+    public function testOverriddenRoutesFactory()
+    {
+        $app = new Application();
+        $app['routes_factory'] = $app->factory(function () {
+            return new RouteCollectionSubClass();
+        });
+        $this->assertInstanceOf('Silex\Tests\RouteCollectionSubClass', $app['routes']);
     }
 }
 
@@ -542,4 +664,8 @@ class IncorrectControllerCollection implements ControllerProviderInterface
     {
         return;
     }
+}
+
+class RouteCollectionSubClass extends RouteCollection
+{
 }

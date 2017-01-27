@@ -2,8 +2,8 @@ Services
 ========
 
 Silex is not only a framework, it is also a service container. It does this by
-extending `Pimple <http://pimple.sensiolabs.org>`_ which provides service
-goodness in just 44 NCLOC.
+extending `Pimple <http://pimple.sensiolabs.org>`_ which provides a very simple
+service container.
 
 Dependency Injection
 --------------------
@@ -70,8 +70,7 @@ the container::
 
     $app['some_parameter'] = 'value';
 
-The array key can be anything, by convention periods are used for
-namespacing::
+The array key can be any value. By convention dots are used for namespacing::
 
     $app['asset.host'] = 'http://cdn.mysite.com/';
 
@@ -167,25 +166,32 @@ Core services
 
 Silex defines a range of services.
 
-* **request**: Contains the current request object, which is an instance of
-  `Request
-  <http://api.symfony.com/master/Symfony/Component/HttpFoundation/Request.html>`_.
+* **request_stack**: Controls the lifecycle of requests, an instance of
+  `RequestStack <http://api.symfony.com/master/Symfony/Component/HttpFoundation/RequestStack.html>` _.
   It gives you access to ``GET``, ``POST`` parameters and lots more!
 
   Example usage::
 
-    $id = $app['request']->get('id');
+    $id = $app['request_stack']->getCurrentRequest()->get('id');
 
-  This is only available when a request is being served; you can only access
-  it from within a controller, an application before/after middlewares, or an
-  error handler.
+  A request is only available when a request is being served; you can only
+  access it from within a controller, an application before/after middlewares,
+  or an error handler.
 
 * **routes**: The `RouteCollection
   <http://api.symfony.com/master/Symfony/Component/Routing/RouteCollection.html>`_
   that is used internally. You can add, modify, read routes.
 
+* **url_generator**: An instance of `UrlGenerator
+  <http://api.symfony.com/master/Symfony/Component/Routing/Generator/UrlGenerator.html>`_,
+  using the `RouteCollection
+  <http://api.symfony.com/master/Symfony/Component/Routing/RouteCollection.html>`_
+  that is provided through the ``routes`` service. It has a ``generate``
+  method, which takes the route name as an argument, followed by an array of
+  route parameters.
+
 * **controllers**: The ``Silex\ControllerCollection`` that is used internally.
-  Check the *Internals* chapter for more information.
+  Check the :doc:`Internals chapter <internals>` for more information.
 
 * **dispatcher**: The `EventDispatcher
   <http://api.symfony.com/master/Symfony/Component/EventDispatcher/EventDispatcher.html>`_
@@ -203,17 +209,31 @@ Silex defines a range of services.
   Request as input and returns a Response as output.
 
 * **request_context**: The request context is a simplified representation of
-  the request that is used by the Router and the UrlGenerator.
+  the request that is used by the Router and the :doc:`UrlGenerator </providers/url_generator.rst>`.
 
 * **exception_handler**: The Exception handler is the default handler that is
   used when you don't register one via the ``error()`` method or if your
   handler does not return a Response. Disable it with
   ``unset($app['exception_handler'])``.
 
-* **logger**: A ``Psr\Log\LoggerInterface`` instance. By default, logging is
+* **logger**: A `LoggerInterface <https://github.com/php-fig/log/blob/master/Psr/Log/LoggerInterface.php>`_ instance. By default, logging is
   disabled as the value is set to ``null``. To enable logging you can either use
-  the ``MonologServiceProvider`` or define your own ``logger`` service that
+  the :doc:`MonologServiceProvider <providers/monolog>` or define your own ``logger`` service that
   conforms to the PSR logger interface.
+
+Core traits
+-----------
+
+* ``Silex\Application\UrlGeneratorTrait`` adds the following shortcuts:
+
+  * **path**: Generates a path.
+
+  * **url**: Generates an absolute URL.
+
+  .. code-block:: php
+
+      $app->path('homepage');
+      $app->url('homepage');
 
 Core parameters
 ---------------
@@ -224,7 +244,7 @@ Core parameters
 
   Defaults to 80.
 
-  This parameter can be used by the ``UrlGeneratorProvider``.
+  This parameter can be used when generating URLs.
 
 * **request.https_port** (optional): Allows you to override the default port
   for HTTPS URLs. If the current request is HTTPS, it will always use the
@@ -232,7 +252,7 @@ Core parameters
 
   Defaults to 443.
 
-  This parameter can be used by the ``UrlGeneratorProvider``.
+  This parameter can be used when generating URLs.
 
 * **debug** (optional): Returns whether or not the application is running in
   debug mode.

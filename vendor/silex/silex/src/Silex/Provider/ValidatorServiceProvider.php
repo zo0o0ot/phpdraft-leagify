@@ -14,10 +14,7 @@ namespace Silex\Provider;
 use Pimple\Container;
 use Pimple\ServiceProviderInterface;
 use Silex\Provider\Validator\ConstraintValidatorFactory;
-use Silex\Application;
 use Symfony\Component\Validator\Validator;
-use Symfony\Component\Validator\DefaultTranslator;
-use Symfony\Component\Validator\Mapping\ClassMetadataFactory;
 use Symfony\Component\Validator\Mapping\Factory\LazyLoadingMetadataFactory;
 use Symfony\Component\Validator\Mapping\Loader\StaticMethodLoader;
 use Symfony\Component\Validator\Validation;
@@ -32,14 +29,6 @@ class ValidatorServiceProvider implements ServiceProviderInterface
     public function register(Container $app)
     {
         $app['validator'] = function ($app) {
-            if (isset($app['translator'])) {
-                $r = new \ReflectionClass('Symfony\Component\Validator\Validation');
-                $file = dirname($r->getFilename()).'/Resources/translations/validators.'.$app['locale'].'.xlf';
-                if (file_exists($file)) {
-                    $app['translator']->addResource('xliff', $file, $app['locale'], 'validators');
-                }
-            }
-
             return $app['validator.builder']->getValidator();
         };
 
@@ -61,13 +50,13 @@ class ValidatorServiceProvider implements ServiceProviderInterface
         };
 
         $app['validator.validator_factory'] = function () use ($app) {
-            $validators = isset($app['validator.validator_service_ids']) ? $app['validator.validator_service_ids'] : array();
-
-            return new ConstraintValidatorFactory($app, $validators);
+            return new ConstraintValidatorFactory($app, $app['validator.validator_service_ids']);
         };
 
         $app['validator.object_initializers'] = function ($app) {
             return array();
         };
+
+        $app['validator.validator_service_ids'] = array();
     }
 }

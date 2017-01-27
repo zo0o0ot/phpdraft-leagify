@@ -14,15 +14,10 @@ namespace Silex\Provider;
 use Pimple\Container;
 use Pimple\ServiceProviderInterface;
 use Symfony\Component\Form\Extension\Csrf\CsrfExtension;
-use Symfony\Component\Form\Extension\Csrf\CsrfProvider\DefaultCsrfProvider;
-use Symfony\Component\Form\Extension\Csrf\CsrfProvider\SessionCsrfProvider;
 use Symfony\Component\Form\Extension\HttpFoundation\HttpFoundationExtension;
 use Symfony\Component\Form\Extension\Validator\ValidatorExtension as FormValidatorExtension;
 use Symfony\Component\Form\Forms;
 use Symfony\Component\Form\ResolvedFormTypeFactory;
-use Symfony\Component\Security\Csrf\CsrfTokenManager;
-use Symfony\Component\Security\Csrf\TokenStorage\NativeSessionTokenStorage;
-use Symfony\Component\Security\Csrf\TokenStorage\SessionTokenStorage;
 
 /**
  * Symfony Form component Provider.
@@ -48,8 +43,6 @@ class FormServiceProvider implements ServiceProviderInterface
             require_once $path.'/NumberFormatter.php';
         }
 
-        $app['form.secret'] = md5(__DIR__);
-
         $app['form.types'] = function ($app) {
             return array();
         };
@@ -64,28 +57,23 @@ class FormServiceProvider implements ServiceProviderInterface
 
         $app['form.extension.csrf'] = function ($app) {
             if (isset($app['translator'])) {
-                return new CsrfExtension($app['form.csrf_provider'], $app['translator']);
+                return new CsrfExtension($app['csrf.token_manager'], $app['translator']);
             }
 
-            return new CsrfExtension($app['form.csrf_provider']);
+            return new CsrfExtension($app['csrf.token_manager']);
         };
 
         $app['form.extensions'] = function ($app) {
             $extensions = array(
-                $app['form.extension.csrf'],
                 new HttpFoundationExtension(),
             );
 
+            if (isset($app['csrf.token_manager'])) {
+                $extensions[] = $app['form.extension.csrf'];
+            }
+
             if (isset($app['validator'])) {
                 $extensions[] = new FormValidatorExtension($app['validator']);
-
-                if (isset($app['translator']) && method_exists($app['translator'], 'addResource')) {
-                    $r = new \ReflectionClass('Symfony\Component\Form\Form');
-                    $file = dirname($r->getFilename()).'/Resources/translations/validators.'.$app['locale'].'.xlf';
-                    if (file_exists($file)) {
-                        $app['translator']->addResource('xliff', $file, $app['locale'], 'validators');
-                    }
-                }
             }
 
             return $extensions;
@@ -104,12 +92,6 @@ class FormServiceProvider implements ServiceProviderInterface
 
         $app['form.resolved_type_factory'] = function ($app) {
             return new ResolvedFormTypeFactory();
-        };
-
-        $app['form.csrf_provider'] = function ($app) {
-            $storage = isset($app['session']) ? new SessionTokenStorage($app['session']) : new NativeSessionTokenStorage();
-
-            return new CsrfTokenManager(null, $storage);
         };
     }
 }

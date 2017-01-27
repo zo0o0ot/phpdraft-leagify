@@ -56,12 +56,12 @@ class SwiftmailerServiceProvider implements ServiceProviderInterface, EventListe
             );
 
             $options = $app['swiftmailer.options'] = array_replace(array(
-                'host'       => 'localhost',
-                'port'       => 25,
-                'username'   => '',
-                'password'   => '',
+                'host' => 'localhost',
+                'port' => 25,
+                'username' => '',
+                'password' => '',
                 'encryption' => null,
-                'auth_mode'  => null,
+                'auth_mode' => null,
             ), $app['swiftmailer.options']);
 
             $transport->setHost($options['host']);
@@ -70,6 +70,10 @@ class SwiftmailerServiceProvider implements ServiceProviderInterface, EventListe
             $transport->setUsername($options['username']);
             $transport->setPassword($options['password']);
             $transport->setAuthMode($options['auth_mode']);
+
+            if (null !== $app['swiftmailer.sender_address']) {
+                $transport->registerPlugin(new \Swift_Plugins_ImpersonatePlugin($app['swiftmailer.sender_address']));
+            }
 
             return $transport;
         };
@@ -89,14 +93,17 @@ class SwiftmailerServiceProvider implements ServiceProviderInterface, EventListe
         $app['swiftmailer.transport.eventdispatcher'] = function () {
             return new \Swift_Events_SimpleEventDispatcher();
         };
+
+        $app['swiftmailer.sender_address'] = null;
     }
 
     public function subscribe(Container $app, EventDispatcherInterface $dispatcher)
     {
-        $onTerminate = function (PostResponseEvent $event) use ($app) {
+        // Event has no typehint as it can be either a PostResponseEvent or a ConsoleTerminateEvent
+        $onTerminate = function ($event) use ($app) {
             // To speed things up (by avoiding Swift Mailer initialization), flush
             // messages only if our mailer has been created (potentially used)
-            if ($app['mailer.initialized']) {
+            if ($app['mailer.initialized'] && $app['swiftmailer.use_spool'] && $app['swiftmailer.spooltransport'] instanceof \Swift_Transport_SpoolTransport) {
                 $app['swiftmailer.spooltransport']->getSpool()->flushQueue($app['swiftmailer.transport']);
             }
         };

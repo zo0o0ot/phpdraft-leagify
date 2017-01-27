@@ -8,7 +8,8 @@ standalone.
 Parameters
 ----------
 
-none
+* **validator.validator_service_ids**: An array of service names representing
+  validators.
 
 Services
 --------
@@ -24,10 +25,6 @@ Services
   data class, which takes a ClassMetadata argument. Then you can set
   constraints on this ClassMetadata instance.
 
-* **validator.validator_factory**: Factory for ConstraintValidators. Defaults
-  to a standard ``ConstraintValidatorFactory``. Mostly used internally by the
-  Validator.
-
 Registering
 -----------
 
@@ -37,8 +34,7 @@ Registering
 
 .. note::
 
-    The Symfony Validator Component comes with the "fat" Silex archive but not
-    with the regular one. If you are using Composer, add it as a dependency:
+    Add the Symfony Validator Component as a dependency:
 
     .. code-block:: bash
 
@@ -52,13 +48,13 @@ The Validator provider provides a ``validator`` service.
 Validating Values
 ~~~~~~~~~~~~~~~~~
 
-You can validate values directly using the ``validateValue`` validator
+You can validate values directly using the ``validate`` validator
 method::
 
     use Symfony\Component\Validator\Constraints as Assert;
 
     $app->get('/validate/{email}', function ($email) use ($app) {
-        $errors = $app['validator']->validateValue($email, new Assert\Email());
+        $errors = $app['validator']->validate($email, new Assert\Email());
 
         if (count($errors) > 0) {
             return (string) $errors;
@@ -90,7 +86,7 @@ collection of constraints::
             'last_name'  => new Assert\Length(array('min' => 10)),
         )),
     ));
-    $errors = $app['validator']->validateValue($book, $constraint);
+    $errors = $app['validator']->validate($book, $constraint);
 
     if (count($errors) > 0) {
         foreach ($errors as $error) {

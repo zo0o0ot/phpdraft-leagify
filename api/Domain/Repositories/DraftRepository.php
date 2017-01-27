@@ -53,6 +53,9 @@ class DraftRepository {
       $draft->complete = $this->app['phpdraft.DraftService']->DraftComplete($draft);
       $draft->is_locked = false;
 
+      $draft->draft_create_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_create_time);
+      $draft->draft_start_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_start_time);
+      $draft->draft_end_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_end_time);
 
       if(!$currentUserOwnsIt && !$currentUserIsAdmin && !$draft->draft_visible && $password != $draft->draft_password) {
         $draft->is_locked = true;
@@ -98,6 +101,9 @@ class DraftRepository {
       $draft->complete = $this->app['phpdraft.DraftService']->DraftComplete($draft);
       $draft->is_locked = false;
 
+      $draft->draft_create_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_create_time);
+      $draft->draft_start_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_start_time);
+      $draft->draft_end_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_end_time);
 
       if(!$currentUserOwnsIt && !$currentUserIsAdmin && !$draft->draft_visible && $password != $draft->draft_password) {
         $draft->is_locked = true;
@@ -132,6 +138,10 @@ class DraftRepository {
     $drafts = array();
 
     while($draft = $draft_stmt->fetch()) {
+      $draft->draft_create_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_create_time);
+      $draft->draft_start_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_start_time);
+      $draft->draft_end_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_end_time);
+
       $drafts[] = $draft;
     }
 
@@ -155,6 +165,10 @@ class DraftRepository {
     $drafts = array();
 
     while($draft = $draft_stmt->fetch()) {
+      $draft->draft_create_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_create_time);
+      $draft->draft_start_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_start_time);
+      $draft->draft_end_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_end_time);
+
       $drafts[] = $draft;
     }
 
@@ -181,6 +195,8 @@ class DraftRepository {
         throw new \Exception("Unable to load draft");
       }
 
+      $draft->using_depth_charts = $draft->using_depth_charts == 1;
+
       $this->SetCachedDraft($draft);
     }
 
@@ -192,17 +208,9 @@ class DraftRepository {
     $draft->draft_visible = empty($draft->draft_password);
     $draft->commish_editable = $currentUserOwnsIt || $currentUserIsAdmin;
 
-    if(!empty($draft->draft_create_time)) {
-      $draft->draft_create_time .= " UTC";
-    }
-
-    if(!empty($draft_start_time)) {
-      $draft->draft_start_time .= " UTC";
-    }
-
-    if(!empty($draft->draft_end_time)) {
-      $draft->draft_end_time .= " UTC";
-    }
+    $draft->draft_create_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_create_time);
+    $draft->draft_start_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_start_time);
+    $draft->draft_end_time = $this->app['phpdraft.UtilityService']->ConvertTimeForClientDisplay($draft->draft_end_time);
 
     $draft->setting_up = $this->app['phpdraft.DraftService']->DraftSettingUp($draft);
     $draft->in_progress = $this->app['phpdraft.DraftService']->DraftInProgress($draft);
@@ -213,7 +221,11 @@ class DraftRepository {
       $draft->styles = $this->app['phpdraft.DraftDataRepository']->GetStyles();
       $draft->statuses = $this->app['phpdraft.DraftDataRepository']->GetStatuses();
       $draft->teams = $this->app['phpdraft.DraftDataRepository']->GetTeams($draft->draft_sport);
+      $draft->historical_teams = $this->app['phpdraft.DraftDataRepository']->GetHistoricalTeams($draft->draft_sport);
       $draft->positions = $this->app['phpdraft.DraftDataRepository']->GetPositions($draft->draft_sport);
+      if($draft->using_depth_charts) {
+        $draft->depthChartPositions = $this->app['phpdraft.DepthChartPositionRepository']->LoadAll($draft->draft_id);
+      }
     }
 
     $draft->is_locked = false;
@@ -251,6 +263,12 @@ class DraftRepository {
         throw new \Exception("Unable to load draft");
       }
 
+      $draft->using_depth_charts = $draft->using_depth_charts == 1;
+
+      if($bustCache) {
+        $this->UnsetCachedDraft($draft->draft_id);
+      }
+
       $this->SetCachedDraft($draft);
     } else {
       $draft = $cachedDraft;
@@ -263,9 +281,9 @@ class DraftRepository {
 
   public function Create(Draft $draft) {
     $insert_stmt = $this->app['db']->prepare("INSERT INTO draft
-      (draft_id, commish_id, draft_create_time, draft_name, draft_sport, draft_status, draft_style, draft_rounds, draft_password)
+      (draft_id, commish_id, draft_create_time, draft_name, draft_sport, draft_status, draft_style, draft_rounds, draft_password, using_depth_charts)
       VALUES
-      (NULL, ?, UTC_TIMESTAMP(), ?, ?, ?, ?, ?, ?)");
+      (NULL, ?, UTC_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?)");
 
     $insert_stmt->bindParam(1, $draft->commish_id);
     $insert_stmt->bindParam(2, $draft->draft_name);
@@ -274,14 +292,13 @@ class DraftRepository {
     $insert_stmt->bindParam(5, $draft->draft_style);
     $insert_stmt->bindParam(6, $draft->draft_rounds);
     $insert_stmt->bindParam(7, $draft->draft_password);
+    $insert_stmt->bindParam(8, $draft->using_depth_charts);
 
     if(!$insert_stmt->execute()) {
       throw new \Exception("Unable to create draft.");
     }
 
-    $draft->draft_id = (int)$this->app['db']->lastInsertId();
-
-    $this->SetCachedDraft($draft);
+    $draft = $this->Load((int)$this->app['db']->lastInsertId(), true);
 
     return $draft;
   }
@@ -294,8 +311,11 @@ class DraftRepository {
   public function Update(Draft $draft) {
     $update_stmt = $this->app['db']->prepare("UPDATE draft
       SET commish_id = ?, draft_name = ?, draft_sport = ?,
-      draft_style = ?, draft_password = ?, draft_rounds = ?
+      draft_style = ?, draft_password = ?, draft_rounds = ?,
+      using_depth_charts = ?
       WHERE draft_id = ?");
+
+    $draft->using_depth_charts = $draft->using_depth_charts == 1;
 
     $update_stmt->bindParam(1, $draft->commish_id);
     $update_stmt->bindParam(2, $draft->draft_name);
@@ -303,7 +323,8 @@ class DraftRepository {
     $update_stmt->bindParam(4, $draft->draft_style);
     $update_stmt->bindParam(5, $draft->draft_password);
     $update_stmt->bindParam(6, $draft->draft_rounds);
-    $update_stmt->bindParam(7, $draft->draft_id);
+    $update_stmt->bindParam(7, $draft->using_depth_charts);
+    $update_stmt->bindParam(8, $draft->draft_id);
 
     if(!$update_stmt->execute()) {
       throw new \Exception("Unable to update draft.");
@@ -481,6 +502,8 @@ class DraftRepository {
     $draft->statuses = null;
     $draft->teams = null;
     $draft->positions = null;
+    $draft->using_depth_charts = null;
+    $draft->depthChartPositions = null;
 
     return $draft;
   }

@@ -44,9 +44,7 @@ Registering
 
 .. note::
 
-    The Symfony Translation Component comes with the "fat" Silex archive but
-    not with the regular one. If you are using Composer, add it as a
-    dependency:
+    Add the Symfony Translation Component as a dependency:
 
     .. code-block:: bash
 
@@ -93,6 +91,22 @@ The above example will result in following routes:
 * ``/fr/hello/igor`` will return ``Bonjour igor``.
 
 * ``/it/hello/igor`` will return ``Hello igor`` (because of the fallback).
+
+Using Resources
+---------------
+
+When translations are stored in a file, you can load them as follows::
+
+    $app = new Application();
+    
+    $app->register(new TranslationServiceProvider());
+    $app->extend('translator.resources', function ($resources, $app) {
+        $resources = array_merge($resources, array(
+            array('array', array('This value should be a valid number.' => 'Cette valeur doit être un nombre.'), 'fr', 'validators'),
+        ));
+
+        return $resources;
+    });
 
 Traits
 ------
@@ -169,15 +183,8 @@ Accessing translations in Twig templates
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Once loaded, the translation service provider is available from within Twig
-templates:
-
-.. code-block:: jinja
-
-    {{ app.translator.trans('translation_key') }}
-
-Moreover, when using the Twig bridge provided by Symfony (see
-:doc:`TwigServiceProvider </providers/twig>`), you will be allowed to translate
-strings in the Twig way:
+templates when using the Twig bridge provided by Symfony (see
+:doc:`TwigServiceProvider </providers/twig>`):
 
 .. code-block:: jinja
 

@@ -40,6 +40,27 @@ class TranslationServiceProvider implements ServiceProviderInterface, EventListe
             $translator->addLoader('array', new ArrayLoader());
             $translator->addLoader('xliff', new XliffFileLoader());
 
+            if (isset($app['validator'])) {
+                $r = new \ReflectionClass('Symfony\Component\Validator\Validation');
+                $file = dirname($r->getFilename()).'/Resources/translations/validators.'.$app['locale'].'.xlf';
+                if (file_exists($file)) {
+                    $translator->addResource('xliff', $file, $app['locale'], 'validators');
+                }
+            }
+
+            if (isset($app['form.factory'])) {
+                $r = new \ReflectionClass('Symfony\Component\Form\Form');
+                $file = dirname($r->getFilename()).'/Resources/translations/validators.'.$app['locale'].'.xlf';
+                if (file_exists($file)) {
+                    $translator->addResource('xliff', $file, $app['locale'], 'validators');
+                }
+            }
+
+            // Register default resources
+            foreach ($app['translator.resources'] as $resource) {
+                $translator->addResource($resource[0], $resource[1], $resource[2], $resource[3]);
+            }
+
             foreach ($app['translator.domains'] as $domain => $data) {
                 foreach ($data as $locale => $messages) {
                     $translator->addResource('array', $messages, $locale, $domain);
@@ -49,22 +70,29 @@ class TranslationServiceProvider implements ServiceProviderInterface, EventListe
             return $translator;
         };
 
-        $app['translator.listener'] = function ($app) {
-            return new TranslatorListener($app['translator'], $app['request_stack']);
-        };
+        if (isset($app['request_stack'])) {
+            $app['translator.listener'] = function ($app) {
+                return new TranslatorListener($app['translator'], $app['request_stack']);
+            };
+        }
 
         $app['translator.message_selector'] = function () {
             return new MessageSelector();
         };
+
+        $app['translator.resources'] = $app->protect(function ($app) {
+            return array();
+        });
 
         $app['translator.domains'] = array();
         $app['locale_fallbacks'] = array('en');
         $app['translator.cache_dir'] = null;
     }
 
-
     public function subscribe(Container $app, EventDispatcherInterface $dispatcher)
     {
-        $dispatcher->addSubscriber($app['translator.listener']);
+        if (isset($app['translator.listener'])) {
+            $dispatcher->addSubscriber($app['translator.listener']);
+        }
     }
 }
