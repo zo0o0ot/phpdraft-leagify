@@ -2,8 +2,8 @@
   angular.module("config", [])
 
 .constant("ENV", {
-	"apiEndpoint": "http://phpdraft-leagify.rhcloud.com/api/",
-	"recaptchaPublicKey": "6LcuYhcTAAAAAKcCHeu75NzrSRSpuV-4PBKevjzF"
+	"apiEndpoint": "https://leagify.me/api/",
+	"recaptchaPublicKey": "6Le6IzgUAAAAAD34E5693dBM_C7fvGjldYmMaQm5"
 })
 
 ;

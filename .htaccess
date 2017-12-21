@@ -5,10 +5,8 @@
 
 <IfModule mod_rewrite.c>
     Options -MultiViews
-
     RewriteEngine On
     RewriteBase /
-
     # Comment next line to disable forcing of HTTPS for all pages:
     # (it is strongly recommended you *keep* this setting enabled!)
     #RewriteCond %{HTTPS} off
