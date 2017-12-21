@@ -104,7 +104,8 @@ class DraftDataRepository {
         "D2" => $this->colors['light_pink'],
         "D3" => $this->colors['seafoam'],
         //Olympics
-        "S16" => $this->colors['light_blue']
+        "S16" => $this->colors['light_blue'],
+        "WO" => $this->colors['gray']
     );
 
     $this->sports = array(
@@ -115,7 +116,8 @@ class DraftDataRepository {
       "NHL" => "Hockey (NHL)",
       "S15" => "Rugby (Super 15)",
       "AMD" => "NFL Draft (Alma Mater Draft)",
-      "S16" => "2016 Summer Olympics"
+      "S16" => "2016 Summer Olympics",
+      "WO" => "Winter Olympics"
     );
 
     $this->styles = array(
@@ -400,6 +402,14 @@ class DraftDataRepository {
     $this->s16_positions = array(
         "S16" => "Summer Olympics"
     );
+
+    $this->wo_teams = array(
+      "WLD" => "World"
+  );
+
+  $this->wo_positions = array(
+      "WO" => "Winter Olympics"
+  );
   }
 
   public function GetPositionColors() {
@@ -446,6 +456,9 @@ class DraftDataRepository {
       case 's16':
         return $this->s16_teams;
         break;
+      case 'wo':
+        return $this->wo_teams;
+        break;  
     }
   }
   public function GetHistoricalTeams($pro_league) {
@@ -502,6 +515,9 @@ class DraftDataRepository {
         break;
       case 's16':
         return $this->s16_positions;
+        break;
+      case 'wo':
+        return $this->wo_positions;
         break;
     }
   }
