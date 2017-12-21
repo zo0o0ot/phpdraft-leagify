@@ -105,7 +105,7 @@ class DraftDataRepository {
         "D3" => $this->colors['seafoam'],
         //Olympics
         "S16" => $this->colors['light_blue'],
-        "WO" => $this->colors['gray']
+        "WOL" => $this->colors['gray']
     );
 
     $this->sports = array(
@@ -117,7 +117,7 @@ class DraftDataRepository {
       "S15" => "Rugby (Super 15)",
       "AMD" => "NFL Draft (Alma Mater Draft)",
       "S16" => "2016 Summer Olympics",
-      "WO" => "Winter Olympics"
+      "WOL" => "Winter Olympics"
     );
 
     $this->styles = array(
@@ -403,12 +403,12 @@ class DraftDataRepository {
         "S16" => "Summer Olympics"
     );
 
-    $this->wo_teams = array(
+    $this->wol_teams = array(
       "WLD" => "World"
   );
 
-  $this->wo_positions = array(
-      "WO" => "Winter Olympics"
+  $this->wol_positions = array(
+      "WOL" => "Winter Olympics"
   );
   }
 
@@ -456,8 +456,8 @@ class DraftDataRepository {
       case 's16':
         return $this->s16_teams;
         break;
-      case 'wo':
-        return $this->wo_teams;
+      case 'wol':
+        return $this->wol_teams;
         break;  
     }
   }
@@ -516,8 +516,8 @@ class DraftDataRepository {
       case 's16':
         return $this->s16_positions;
         break;
-      case 'wo':
-        return $this->wo_positions;
+      case 'wol':
+        return $this->wol_positions;
         break;
     }
   }
