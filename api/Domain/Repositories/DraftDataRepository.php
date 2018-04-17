@@ -25,6 +25,7 @@ class DraftDataRepository {
   private $super_rugby_teams;
   private $historical_super_rugby_teams;
   private $alma_mater_teams;
+  private $state_teams
 
   private $mlb_positions;
   private $nba_positions;
@@ -33,6 +34,7 @@ class DraftDataRepository {
   private $extended_nfl_positions;
   private $super_rugby_positions;
   private $alma_mater_positions;
+  private $state_positions
 
   public function __construct(Application $app) {
     $this->app = $app;
@@ -105,7 +107,12 @@ class DraftDataRepository {
         "D3" => $this->colors['seafoam'],
         //Olympics
         "S16" => $this->colors['light_blue'],
-        "WOL" => $this->colors['gray']
+        "WOL" => $this->colors['gray'],
+        //States
+        "MW" => $this->colors['light_blue'], //LT BLUE
+        "S" => $this->colors['light_orange'], //LT ORANGE
+        "NW" => $this->colors['light_yellow'], //LT YELLOW
+        "W" => $this->colors['light_red'] //LT RED
     );
 
     $this->sports = array(
@@ -117,7 +124,8 @@ class DraftDataRepository {
       "S15" => "Rugby (Super 15)",
       "AMD" => "NFL Draft (Alma Mater Draft)",
       "S16" => "2016 Summer Olympics",
-      "WOL" => "Winter Olympics"
+      "WOL" => "Winter Olympics",
+      "STA" => "NFL Draft (States Draft)"
     );
 
     $this->styles = array(
@@ -361,15 +369,26 @@ class DraftDataRepository {
     );
     
     $this->alma_mater_positions = array(
-        "ACC" => "Atlantic Coast Conference",
-        "B12" => "Big 12",
-        "B10"  => "Big 10",
-        "P12" => "Pac 12",
-        "SEC" => "Southeastern Conference",
-        "FBS"  => "FBS - Not in Power 5",
-        "FCS" => "Football Championship Subdivision",
-        "D2" => "Division 2",
-        "D3" => "Division 3",
+      "ACC" => "Atlantic Coast Conference",
+      "B12" => "Big 12",
+      "B10"  => "Big 10",
+      "P12" => "Pac 12",
+      "SEC" => "Southeastern Conference",
+      "FBS"  => "FBS - Not in Power 5",
+      "FCS" => "Football Championship Subdivision",
+      "D2" => "Division 2",
+      "D3" => "Division 3"
+  );
+
+    $this->state_positions = array(
+        "MW" => "Midwest",
+        "S" => "South",
+        "NE" => "Northeast",
+        "W" => "West"
+    );
+
+    $this->state_teams = array(
+      "USA" => "USA"
     );
 
     $this->historical_super_rugby_teams = array_merge($this->super_rugby_teams, array(
@@ -458,6 +477,9 @@ class DraftDataRepository {
         break;
       case 'wol':
         return $this->wol_teams;
+        break;
+      case 'sta':
+        return $this->state_teams;
         break;  
     }
   }
@@ -518,6 +540,9 @@ class DraftDataRepository {
         break;
       case 'wol':
         return $this->wol_positions;
+        break;
+      case 'sta':
+        return $this->state_positions;
         break;
     }
   }
